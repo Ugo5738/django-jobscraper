@@ -30,7 +30,7 @@ def scrape_upstaff():
 
         BASE_DIR = Path(__file__).resolve().parent.parent
         # DRIVER_PATH = os.path.join(BASE_DIR, "chromedriver.exe")
-        DRIVER_PATH = "./chromedriver.exe"
+        DRIVER_PATH = "/root/chromedriver.exe"
         WEB_URL = "https://up2staff.com/"
 
         options = Options()
