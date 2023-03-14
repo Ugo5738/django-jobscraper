@@ -12,6 +12,7 @@ class Post(models.Model):
     category = models.CharField(max_length=100)
     salary_range = models.CharField(max_length=100)
     post_time = models.CharField(max_length=100)
+    application_link = models.CharField(max_length=300, default="")
     fill_date = models.CharField(max_length=100, default=now().strftime("%Y-%m-%d"))
 
     def __str__(self):

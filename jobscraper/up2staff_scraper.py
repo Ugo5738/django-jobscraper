@@ -1,4 +1,6 @@
 import logging
+import sys
+import traceback
 
 import requests
 from bs4 import BeautifulSoup
@@ -6,24 +8,27 @@ from bs4 import BeautifulSoup
 from jobscraper.models import Post
 
 # Configure logging
-# logging.basicConfig(filename='example.log', level=logging.ERROR)
-logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 def scrape_upstaff():
     try:
+        job_links = []
+        date_dict = {}
         with open("alljobs.txt", "r") as f:
             for line in f:
-                date_dict = {}
-
                 search_query = line.strip()
                 url = f"https://up2staff.com/?s={search_query}"
+                # logger.info(f"Checking URL: {url}")
                 response = requests.get(url)
                 soup = BeautifulSoup(response.text, "html.parser")
 
-                job_links = []
                 job_listings = soup.find_all("li", class_="job_listing")
-
                 for listing in job_listings:
                     location = listing.find("div", class_="location").text.strip()
                     date = listing.find("li", class_="date").find("time").text.strip()
@@ -32,7 +37,11 @@ def scrape_upstaff():
                             job_link = listing.find("a")["href"]
                             job_links.append(job_link)
                             date_dict[job_link] = date
+                            logger.info(f"URL: {job_link} added!")
 
+        job_links = list(set(job_links))
+        logger.info(f"Done getting links: ")
+        # logger.info(f"{job_links}")
         for i in range(len(job_links)):
             link = job_links[i]
             data = requests.get(link)
@@ -62,26 +71,33 @@ def scrape_upstaff():
                 job_description_text += f"{tag_content} \n\n\n\n"
                 job_description = job_description_text.strip()
 
-                if not Post.objects.filter(
-                    website_name="up2staff", job_title=title, job_company_name=job_company_name
-                ).exists():
-                    new_post = Post(
-                        website_name="up2staff",
-                        job_title=title,
-                        job_company_name=job_company_name,
-                        logo_url=logo_url,
-                        job_description=job_description,
-                        location=location,
-                        category=category,
-                        post_time=date_dict[link],
-                    )
+            application_tag = soup.find("div", class_="application_details")
+            a_tag = application_tag.find("a")
+            application_link = a_tag.get("href")
 
-                    new_post.save()
-                else:
-                    # skip creating the new post
-                    pass
+            if not Post.objects.filter(
+                website_name="up2staff", job_title=title, job_company_name=job_company_name
+            ).exists():
+                new_post = Post(
+                    website_name="up2staff",
+                    job_title=title,
+                    job_company_name=job_company_name,
+                    logo_url=logo_url,
+                    job_description=job_description,
+                    location=location,
+                    category=category,
+                    application_link=application_link,
+                    post_time=date_dict[link],
+                )
+                new_post.save()
+                logger.info(f"Added URL: {link} data")
+            else:
+                # skip creating the new post
+                pass
+        logger.info(f"Done Scraping")
     except Exception as e:
-        logging.error(str(e))
+        logger.error(f"Error occurred at line {sys.exc_info()[-1].tb_lineno}: {str(e)}")
+        logger.error(f"Error type: {type(e)}, Error message: {str(e)}")
     return "done"
 
 
