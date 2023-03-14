@@ -37,7 +37,6 @@ class GetScraped(View):
         date = now.strftime("%Y-%m-%d")
 
         post_list = []
-        website_name = "Up2staff"
         posts = Post.objects.filter(fill_date=date, website_name=website_name)
 
         for post in posts:
