@@ -41,7 +41,7 @@ def scrape_upstaff():
 
         job_links = list(set(job_links))
         logger.info(f"Done getting links: ")
-        # logger.info(f"{job_links}")
+        logger.info(f"{job_links}")
         for i in range(len(job_links)):
             link = job_links[i]
             data = requests.get(link)
@@ -90,7 +90,7 @@ def scrape_upstaff():
                     post_time=date_dict[link],
                 )
                 new_post.save()
-                logger.info(f"Added URL: {link} data")
+                logger.info(f"Saved URL: {link} data")
             else:
                 # skip creating the new post
                 pass
