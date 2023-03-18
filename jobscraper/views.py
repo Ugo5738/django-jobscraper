@@ -13,21 +13,29 @@ from jobscraper.remote_co_scraper import scrape_remote_co
 from jobscraper.remote_io_scraper import scrape_remote_io
 from jobscraper.up2staff_scraper import scrape_upstaff
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 
 class Scrape(View):
     def get(self, request, *args, **kwargs):
         # Configure logging
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
+        # logger = logging.getLogger(__name__)
+        # logger.setLevel(logging.INFO)
+        # formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        # ch = logging.StreamHandler()
+        # ch.setFormatter(formatter)
+        # logger.addHandler(ch)
 
-        # Calculate the date for yesterday
-        yesterday = now().date() - timedelta(days=1)
+        # # Calculate the date for yesterday
+        # yesterday = now().date() - timedelta(days=1)
 
-        # Filter the posts with fill_date equal to yesterday or earlier
+        # # Filter the posts with fill_date equal to yesterday or earlier
         # posts_to_delete = Post.objects.filter(fill_date__lte=yesterday)
 
         # # Delete the posts
@@ -77,6 +85,7 @@ class GetScraped(View):
                     "application_link": post.application_link,
                     "job_tags": [tag.tag_name for tag in tags],
                 }
+                logger.info(f"Called post with tags")
             else:
                 post_dict = {
                     "website_name": post.website_name,
@@ -91,6 +100,8 @@ class GetScraped(View):
                     "application_link": post.application_link,
                     "fill_date": post.fill_date,
                 }
+                logger.info(f"Called post without tags")
             post_list.append(post_dict)
+            logger.info(f"Post list created and sent!")
 
         return JsonResponse(post_list, safe=False)

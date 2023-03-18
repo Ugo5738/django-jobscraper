@@ -24,7 +24,7 @@ def scrape_upstaff():
             for line in f:
                 search_query = line.strip()
                 url = f"https://up2staff.com/?s={search_query}"
-                # logger.info(f"Checking URL: {url}")
+                logger.info(f"Checking URL: {url}")
                 response = requests.get(url)
                 soup = BeautifulSoup(response.text, "html.parser")
 
@@ -38,6 +38,8 @@ def scrape_upstaff():
                             job_links.append(job_link)
                             date_dict[job_link] = date
                             logger.info(f"URL: {job_link} added!")
+                    else:
+                        logger.info(f"URL not added!")
 
         job_links = list(set(job_links))
         logger.info(f"Done getting links: ")

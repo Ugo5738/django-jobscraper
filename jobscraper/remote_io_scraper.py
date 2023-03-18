@@ -1,182 +1,148 @@
-import os
+import logging
 import sys
-import time
-from pathlib import Path
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+import requests
+from bs4 import BeautifulSoup
 
 from jobscraper.models import JobTag, Post
 
-
-def check_block_element(driver):
-    blocking_element = WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".jsx-3911492254"))
-    )
-    # click the button to cancel the blocking element
-    cancel_button = blocking_element.find_element(
-        By.CSS_SELECTOR, "[data-modal-close-target='modal-alert-subscribe']"
-    )
-    cancel_button.click()
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 def scrape_remote_io():
-    job_links = []
-    jobs_dict = {}
-    job_description_dict = {}
-    job_description_text = ""
+    try:
+        search_queries = [
+            "/remote-software-development-jobs",
+            "/remote-data-jobs",
+            "/remote-design-jobs",
+            "/remote-product-jobs",
+            "/remote-business-development-jobs",
+        ]
 
-    BASE_DIR = Path(__file__).resolve().parent.parent
-    DRIVER_PATH = os.path.join(BASE_DIR, "chromedriver.exe")
-    WEB_URL = "https://www.remote.io"
+        WEB_URL = "https://www.remote.io"
+        job_links = []
 
-    options = Options()
-    # options.add_argument("--headless")
-    service = Service(DRIVER_PATH)
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.get(WEB_URL)
-    # check if the blocking element exists
+        for search_query in search_queries:
+            url = f"{WEB_URL}{search_query}"
 
-    # Find the search box
-    select_element = WebDriverWait(driver, 2).until(
-        EC.element_to_be_clickable((By.ID, "job-search-category"))
-    )
-    driver.execute_script("arguments[0].click();", select_element)
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, "html.parser")
 
-    # INCLUDE "Data"
-    # Input Software Development into the search box to find related jobs
-    option_element = WebDriverWait(driver, 2).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "option[value='software-development']"))
-    )
-    option_element.click()
-
-    # Limit search to job open to anyone across the globe
-    anywhere_button = WebDriverWait(driver, 2).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'Anywhere')]"))
-    )
-    anywhere_button.click()
-
-    # Get all the job cards on that page
-    job_cards = driver.find_elements(
-        By.XPATH,
-        "//div[@class='lg:flex shadow-singlePost hover:bg-gray-600 items-center hidden px-5 py-3 space-x-6 bg-white rounded-md cursor-pointer relative']",
-    )
-
-    # Loop through each job card
-    for job_card in job_cards:
-        # Check if the time span element contains "h" and exclude the ones that have "d"
-        time_span = job_card.find_element(
-            By.XPATH, "//span[@class='font-500 bottom-3 right-3 absolute text-xs leading-none text-gray-400']"
-        )
-        # include minutes in this logic
-        if "h" in time_span.text and "d" not in time_span.text:
-            # Get the job link from the job card
-            job_link = job_card.get_attribute("onclick")
-            job_link = job_link.split("'")[1]  # Extract the link from the string
-            job_links.append(f"{WEB_URL}{job_link}")
-
-    for i in range(len(job_links)):
-        link = job_links[i]
-        driver.get(link)
-
-        job_title = driver.find_element(By.CSS_SELECTOR, "h1[data-rewrite='job-title']").text
-        job_company_name = driver.find_element(By.CSS_SELECTOR, "p[data-rewrite='job-company-name']").text
-        logo_element = driver.find_element(By.XPATH, "//div[contains(@class, 'styles_logo__1_efV')]/img")
-        logo_url = logo_element.get_attribute("src")
-        tag_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-rewrite='job-tags'] a")
-        job_tags = [tag_element.text for tag_element in tag_elements if tag_element.text != ""]
-
-        job_description_element = WebDriverWait(driver, 2).until(
-            EC.visibility_of_element_located((By.ID, "job-description"))
-        )
-        child_elements = job_description_element.find_elements(By.XPATH, "./*")
-
-        for element in child_elements:
-            if (
-                element.tag_name == "h3"
-                or element.tag_name == "h4"
-                or element.tag_name == "p"
-                or element.tag_name == "ul"
-            ):
-                job_description_dict[f"{element.tag_name}"] = f"{element.text}"
-                job_description_text += f"{element.text} \n\n"
-        location_element = job_description_element.find_element(
-            By.XPATH, "//p[contains(text(),'location or timezone')]/following-sibling::div//a"
-        )
-        location = location_element.text
-
-        category_element = job_description_element.find_element(
-            By.XPATH, "//p[contains(text(),'category')]/following-sibling::span//a"
-        )
-        category = category_element.text
-
-        posted_element = job_description_element.find_element(By.XPATH, "//li[contains(p/text(),'posted')]")
-        # if posted_element.text.split(" ")[1] == "days":
-        #     continue
-        posted_time = posted_element.text.split(" ")[0].split("\n")[-1]
-
-        try:
-            salary_element = job_description_element.find_element(
-                By.XPATH, "//p[contains(text(),'yearly salary range')]/following-sibling::div"
-            )
-            salary_range = salary_element.text
-        except:
-            print("This is no salary range stated for this job")
-            salary_range = ""
-        if not Post.objects.filter(
-            website_name="Up2staff", job_title=job_title, job_company_name=job_company_name
-        ).exists():
-            new_post = Post(
-                website_name="Remote IO",
-                job_title=job_title,
-                job_company_name=job_company_name,
-                # job_tags=job_tags,
-                logo_url=logo_url,
-                job_description=job_description_text,
-                location=location,
-                category=category,
-                salary_range=salary_range,
-                post_time=posted_time,
+            cards = soup.find_all(
+                "div",
+                class_="lg:flex shadow-singlePost hover:bg-gray-600 items-center hidden px-5 py-3 space-x-6 bg-white rounded-md cursor-pointer relative",
             )
 
-            new_post.save()
+            for card in cards:
+                # job_title = card.find("a", class_="font-500 text-lg text-black whitespace-pre-wrap").text.strip()
+                # company_name = card.find("p", class_="font-400 mb-1 text-gray-300").text.strip()
+                time_posted = card.find("span", class_="text-gray-400").text
+                job_location = card.find(
+                    "a",
+                    class_="px-2 py-1 text-xs uppercase inline-flex items-center font-500 md:rounded-sm rounded-xs whitespace-pre-line bg-opacity-10 bg-black text-gray-300",
+                )
+                if job_location is not None:
+                    location = job_location.text.strip()
+                else:
+                    continue
 
-            for job_tag in job_tags:
-                tag = JobTag(tag_name=job_tag)
-                tag.post = new_post
-                tag.save()
-        else:
-            # skip creating the new post
-            pass
+                if "anywhere" not in location.lower():
+                    if "h" in time_posted or "m" in time_posted:
+                        card_link = card.find(
+                            "a", class_="font-500 text-lg text-black whitespace-pre-wrap"
+                        ).get("href")
+                        link = WEB_URL + card_link
+                        job_links.append(link)
 
-        # one_job_dict = {}
-        # one_job_dict["Job Title"] = job_title
-        # one_job_dict["Job Company Name"] = job_company_name
-        # one_job_dict["Job Tags"] = job_tags
-        # one_job_dict["Logo"] = logo_url
-        # one_job_dict["Location"] = location
-        # one_job_dict["Category"] = category
-        # one_job_dict["Salary Range"] = salary_range
-        # one_job_dict["Posted Date"] = posted_time
-        # one_job_dict["Job Description"] = job_description_dict
+        logger.info(job_links)
+        for i in range(len(job_links)):
+            link = job_links[i]
+            response = requests.get(link)
+            soup = BeautifulSoup(response.content, "html.parser")
 
-        # jobs_dict[f"job_{i+1}"] = one_job_dict
+            title = soup.find("h1", {"class": "styles_title__3gFK4"}).text.strip()
 
-        # Click on the next link, unless this is the last link in the list
-        if i < len(job_links) - 1:
-            next_link = job_links[i + 1]
-            driver.get(next_link)
-            time.sleep(2)  # Add a delay to allow the page to load
+            job_company_name = soup.find("p", {"data-rewrite": "job-company-name"}).text
 
-    time.sleep(5)
-    driver.quit()
+            logo_element = soup.find("div", {"class": "styles_logo__1_efV"})
+            logo_url = logo_element.find("img")["src"]
 
+            tag_elements = soup.find_all("a", {"data-tag": "true"})
+            job_tags_list = [tag.text for tag in tag_elements]
+
+            job_description = soup.find("div", {"id": "job-description"}).text
+
+            application_element = soup.find(
+                "div", {"class": "md:hidden bottom-2 md:space-y-6 sticky block col-span-12 mt-6 space-y-4"}
+            )
+            application_url = application_element.find("a")["href"]
+            application_link = f"{WEB_URL}{application_url}"
+
+            category = soup.find(
+                "a",
+                {
+                    "class": "border-transparent px-1 text-xs uppercase border-2 border-solid text-white font-500 bg-gray-300 rounded-sm flex-shrink-0 mr-1 mb-1 items-center"
+                },
+            ).text
+
+            location_salary_elements = soup.find_all("div", {"class": "text-base text-gray-100"})
+            location = location_salary_elements[0].text.strip()
+            try:
+                salary = location_salary_elements[1].text.strip()
+            except:
+                logger.info("There is no salary for this job!")
+
+            card_element = soup.find("ul", {"class": "top-0 p-4 space-y-4 bg-gray-600 rounded-md"})
+            li_tags = card_element.find_all("li")
+            _, num, day, text = li_tags[-1].text.strip().split()
+            posted_time = f"{num} {day} {text}"
+
+            if not Post.objects.filter(
+                website_name="remoteio", job_title=title, job_company_name=job_company_name
+            ).exists():
+                if salary:
+                    new_post = Post(
+                        website_name="remoteio",
+                        job_title=title,
+                        job_company_name=job_company_name,
+                        salary_range=salary,
+                        logo_url=logo_url,
+                        job_description=job_description,
+                        location=location,
+                        category=category,
+                        application_link=application_link,
+                        post_time=posted_time,
+                    )
+                else:
+                    new_post = Post(
+                        website_name="remoteio",
+                        job_title=title,
+                        job_company_name=job_company_name,
+                        logo_url=logo_url,
+                        job_description=job_description,
+                        location=location,
+                        category=category,
+                        application_link=application_link,
+                        post_time=posted_time,
+                    )
+                new_post.save()
+                logger.info(f"Saved URL: {link} data")
+
+                # Create JobTag instances and associate them with the newly created Post
+                for tag_text in job_tags_list:
+                    job_tag = JobTag(tag_name=tag_text, post=new_post)
+                    job_tag.save()
+            else:
+                # skip creating the new post
+                pass
+        logger.info(f"Done Scraping")
+    except Exception as e:
+        logger.error(f"Error occurred at line {sys.exc_info()[-1].tb_lineno}: {str(e)}")
+        logger.error(f"Error type: {type(e)}, Error message: {str(e)}")
     return "done"
-    # return jobs_dict
-
-
-# scrape_remote_io()
