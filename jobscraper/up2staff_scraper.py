@@ -62,16 +62,35 @@ def scrape_upstaff():
 
             tags_and_content = []
             job_description_text = ""
-            description_tags = soup.find_all("div", class_="job_description")
-            for tag in description_tags:
-                tag_name = tag.name
-                tag_content = "\n\n".join(tag.stripped_strings)
-                # tag_content = tag.stripped_strings
-                #     if ">document.getElementById" in tag_content:
-                #         continue
-                tags_and_content.append((tag_name, tag_content))
-                job_description_text += f"{tag_content} \n\n\n\n"
-                job_description = job_description_text.strip()
+            # description_tags = soup.find_all("div", class_="job_description")
+            description_tags = soup.find("div", class_="job_description")
+            for tag in description_tags.descendants:
+                if tag.name == "p":
+                    p_text = f"{tag.text}\n\n"
+                    tags_and_content.append(p_text)
+                elif tag.name == "ul":
+                    for li in tag.find_all("li"):
+                        list_text = f"- {li.text}\n"
+                        tags_and_content.append(list_text)
+                    tags_and_content.append(f"\n")
+
+                # if tag.name == "strong":
+                #     print(tag.text)
+
+                elif tag.name == "a":
+                    print(tag.text)
+
+            job_description_text = "".join(tags_and_content)
+            print(job_description_text)
+            # for tag in description_tags:
+            #     tag_name = tag.name
+            #     tag_content = "\n\n".join(tag.stripped_strings)
+            #     # tag_content = tag.stripped_strings
+            #     #     if ">document.getElementById" in tag_content:
+            #     #         continue
+            #     tags_and_content.append((tag_name, tag_content))
+            #     job_description_text += f"{tag_content} \n\n\n\n"
+            #     job_description = job_description_text.strip()
 
             application_tag = soup.find("div", class_="application_details")
             a_tag = application_tag.find("a")
