@@ -104,5 +104,7 @@ class GetScraped(View):
             post_list.append(post_dict)
             logger.info(f"Post added to list!")
         logger.info("Done getting posts!")
+        if not post_list:
+            return HttpResponse("There is scraped data from this api at this time")
 
         return JsonResponse(post_list, safe=False)

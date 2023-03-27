@@ -76,7 +76,23 @@ def scrape_remote_io():
             tag_elements = soup.find_all("a", {"data-tag": "true"})
             job_tags_list = [tag.text for tag in tag_elements]
 
-            job_description = soup.find("div", {"id": "job-description"}).text
+            tags_and_content = []
+            job_description_tags = soup.find("div", {"id": "job-description"})
+            for tag in job_description_tags.children:
+                if tag.name == "p":
+                    p_text = f"{tag.text}\n\n"
+                    tags_and_content.append(p_text)
+                elif tag.name == "ul":
+                    for li in tag.find_all("li"):
+                        list_text = f"- {li.text}\n"
+                        tags_and_content.append(list_text)
+                    tags_and_content.append(f"\n")
+                # elif tag.name == "br":
+                #     tags_and_content.append(f"\n")
+                # if tag.name == "strong":
+                #     print(tag.text)
+
+            job_description = "".join(tags_and_content)
 
             application_element = soup.find(
                 "div", {"class": "md:hidden bottom-2 md:space-y-6 sticky block col-span-12 mt-6 space-y-4"}
