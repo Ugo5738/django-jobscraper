@@ -84,7 +84,25 @@ def scrape_remote_co():
             logo_url = soup.find("img", class_="job_company_logo")["data-lazy-src"]
 
             job_description_tags = soup.find("div", class_="job_description")
-            job_description = job_description_tags.text
+            tags_and_content = []
+            job_description_tags = soup.find("div", class_="job_description")
+            for tag in job_description_tags.children:
+                if tag.name == "h3":
+                    p_text = f"{tag.text}\n\n"
+                    tags_and_content.append(p_text)
+                elif tag.name == "ul":
+                    for li in tag.find_all("li"):
+                        list_text = f"- {li.text}\n"
+                        tags_and_content.append(list_text)
+                    tags_and_content.append(f"\n")
+
+                # if tag.name == "strong":
+                #     print(tag.text)
+
+                elif tag.name == "p":
+                    h3_text = f"{tag.text}\n\n"
+                    tags_and_content.append(h3_text)
+            job_description = "".join(tags_and_content)
 
             application_div = soup.find("div", class_="application")
             application_link = application_div.find("a")["href"]

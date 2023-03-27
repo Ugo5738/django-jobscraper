@@ -78,10 +78,11 @@ def scrape_upstaff():
                 #     print(tag.text)
 
                 elif tag.name == "a":
-                    print(tag.text)
+                    a_text = f"{tag.text}\n\n"
+                    tags_and_content.append(a_text)
 
             job_description = "".join(tags_and_content)
-            # print(job_description_text)
+
             # for tag in description_tags:
             #     tag_name = tag.name
             #     tag_content = "\n\n".join(tag.stripped_strings)

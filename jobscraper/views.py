@@ -32,15 +32,15 @@ class Scrape(View):
         # ch.setFormatter(formatter)
         # logger.addHandler(ch)
 
-        # # Calculate the date for yesterday
-        # yesterday = now().date() - timedelta(days=1)
+        # Calculate the date for yesterday
+        yesterday = now().date() - timedelta(days=1)
 
-        # # Filter the posts with fill_date equal to yesterday or earlier
-        # posts_to_delete = Post.objects.filter(fill_date__lte=yesterday)
+        # Filter the posts with fill_date equal to yesterday or earlier
+        posts_to_delete = Post.objects.filter(fill_date__lte=yesterday)
 
-        # # Delete the posts
-        # num_deleted, _ = posts_to_delete.delete()
-        # logger.info(f"Deleted {num_deleted} posts from yesterday backwards.")
+        # Delete the posts
+        num_deleted, _ = posts_to_delete.delete()
+        logger.info(f"Deleted {num_deleted} posts from yesterday backwards.")
 
         website_name = kwargs["websitename"]
         if website_name == "remoteio":
@@ -102,6 +102,7 @@ class GetScraped(View):
                 }
                 logger.info(f"Called post without tags")
             post_list.append(post_dict)
-            logger.info(f"Post list created and sent!")
+            logger.info(f"Post added to list!")
+        logger.info("Done getting posts!")
 
         return JsonResponse(post_list, safe=False)
