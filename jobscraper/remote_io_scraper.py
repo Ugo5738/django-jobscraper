@@ -93,7 +93,7 @@ def scrape_remote_io():
                 #     print(tag.text)
 
             job_description = "".join(tags_and_content)
-
+            
             application_element = soup.find(
                 "div", {"class": "md:hidden bottom-2 md:space-y-6 sticky block col-span-12 mt-6 space-y-4"}
             )

@@ -7,7 +7,7 @@ class Post(models.Model):
     job_title = models.CharField(max_length=100)
     job_company_name = models.CharField(max_length=100)
     logo_url = models.CharField(max_length=100)
-    job_description = models.CharField(max_length=20000)
+    job_description = models.TextField()
     location = models.CharField(max_length=100)
     category = models.CharField(max_length=100)
     salary_range = models.CharField(max_length=100)
